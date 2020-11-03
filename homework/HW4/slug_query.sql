@@ -124,7 +124,6 @@ FROM (
 ) t1
 WHERE
 	AB       > 300  AND # Players with at least 300 at bats
-    yearId   > 2018 AND # Data from most recent year (2019)
     Slugging > .400 # Slugging pct over .400
 ORDER BY Slugging DESC
 LIMIT 20;
