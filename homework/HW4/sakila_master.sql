@@ -3,6 +3,7 @@ select a.actor_id, first_name, last_name, film_id
 from actor a, film_actor fm
 where a.actor_id = fm.actor_id;
 
+##### Doesn't return any results and I have no idea why ######
 -- SHORT CUT (NATURAL JOIN)
 select customer_id, last_name, rental_id, rental_date
 from customer natural join rental;
@@ -88,149 +89,148 @@ group by rental_id
 having sum(amount) > (SELECT AVG(amount) from payment);
 
 -- subquery ALL AND ANY
-select payment_id, amount
-from payment
-where amount > ALL(SELECT amount
-						from payment 
-						where customer_id in (select customer_id
-                        from customer
-                        where address_id=2));
-					
+select p_code, p_qoh*p_price
+from product
+where p_qoh*p_price > ALL(SELECT P_QOH * P_PRICE
+						from product 
+						where v_code in (select v_code
+                        from vendor
+                        where v_state='FL'));
 
 -- subquery ANY (DOESN'T Really make sense does it?)
-select payment_id, amount
-from payment
-where amount > ANY(SELECT amount
-						from payment 
-						where customer_id in (select customer_id
-                        from customer
-                        where address_id=2));
+select p_code, p_qoh*p_price
+from product
+where p_qoh*p_price > ANY(SELECT P_QOH * P_PRICE
+						from product 
+						where v_code in (select v_code
+                        from vendor
+                        where v_state='FL'));                        
                         
                         
 -- FROM SUBQUERIES
 
-select distinct customer.customer_id, customer.last_name
+select distinct customer.cus_code, customer.cus_lname 
 from customer,
-	(select rental.customer_id from rental natural join inventory
-    where film_id=3) CP1,
-    (select rental.customer_id from rental natural join inventory
-    where film_id=7) CP2
-where customer.customer_id=cp1.customer_id and cp1.customer_id=cp2.customer_id;
+	(select invoice.cus_code from invoice natural join line
+    where p_code='13-Q2/P2') CP1,
+    (select invoice.cus_code from invoice natural join line
+    where p_code='23109-HB') CP2
+where customer.cus_code=cp1.cus_code and cp1.cus_code=cp2.cus_code;
 
 -- Attribute LIST SUBQUERIES
 
-select payment_id, amount, (select avg(amount) from payment) as avgprice,
-	amount-(select avg(amount) from payment) as diff
-from payment;
+select p_code, p_price, (select avg(p_price) from product) as avgprice,
+	p_price-(select avg(p_price) from product) as diff
+from product;
 
 -- correlated subquery  (Does outer first, then inner. This passes the first P_CODE from outer, and then calcs the average for that product)
-select rental_id, payment_id, amount
-from payment p
-where p.amount > (select avg(amount)
-						from payment pm
-						where pm.rental_id=p.rental_id);
+select inv_number, line_number, p_code, line_units
+from line ls
+where ls.line_units > (select avg(line_units)
+						from line la
+						where la.p_code=ls.p_code);
 
 -- exists query (correlated)   exists is only for subquerys
 
-select customer_id, last_name, first_name
+select cus_code, cus_lname, cus_fname
 from customer
-where exists (select customer_id from rental
-				where rental.customer_id=
-                customer.customer_id);
+where exists (select cus_code from invoice
+				where invoice.cus_code=
+                customer.cus_code);
 
 -- This doesn't work
-select customer.customer_id, last_name, first_name
-from customer, rental
-where rental.customer_id=
-customer.customer_id;
+select customer.cus_code, cus_lname, cus_fname
+from customer, invoice
+where invoice.cus_code=
+customer.cus_code;
 
 -- Date time queries
 SELECT DAYOFMONTH('2001-11-10'), MONTH('2005-03-05');
 SELECT ADDDATE('2008-01-02', 31);
 
-select last_name, first_name, create_date, year(create_date) as YEARCREATE
-from customer where year(create_date) > 2005;
+select emp_lname, emp_fname, emp_dob, year(emp_dob) as YEARBORN
+from emp where year(emp_dob)> 1959;
 
 -- Case SQL Statements
-select lower(last_name) from customer;
-select upper(last_name) from customer;
-select last_name from customer where lower(last_name) like 'an%';
+select lower(emp_lname) from emp;
+select upper(emp_lname) from emp;
+select emp_lname from emp where lower(emp_lname) like 'smi%';
 
-# these are bad naming conventions but I am keeping consistent with the original customer table
-drop table CUSTOMER_2;
+drop table customer_2;
 CREATE TABLE CUSTOMER_2 (
-customer_id int,
-last_name varchar(15),
-first_name varchar(15),
-active varchar(3),
-email varchar(8)
+CUS_CODE int,
+CUS_LNAME varchar(15),
+CUS_FNAME varchar(15),
+CUS_INITIAL varchar(1),
+CUS_AREACODE varchar(3),
+CUS_PHONE varchar(8)
 
 );
 
-INSERT INTO CUSTOMER_2 VALUES(345,'Terrell','Justine','615','322-9870');
-INSERT INTO CUSTOMER_2 VALUES(347,'Olowski','Paul',615,'894-2180');
-INSERT INTO CUSTOMER_2 VALUES(351,'Hernandez','Carlos','723','123-7654');
-INSERT INTO CUSTOMER_2 VALUES(352,'McDowell','George','723','123-7768');
-INSERT INTO CUSTOMER_2 VALUES(365,'Tirpin','Khaleed','723','123-9876');
-INSERT INTO CUSTOMER_2 VALUES(368,'Lewis','Marie','734','332-1789');
-INSERT INTO CUSTOMER_2 VALUES(369,'Dunne','Leona','713','894-1238');
+INSERT INTO CUSTOMER_2 VALUES(345,'Terrell','Justine','H','615','322-9870');
+INSERT INTO CUSTOMER_2 VALUES(347,'Olowski','Paul','F',615,'894-2180');
+INSERT INTO CUSTOMER_2 VALUES(351,'Hernandez','Carlos','J','723','123-7654');
+INSERT INTO CUSTOMER_2 VALUES(352,'McDowell','George',NULL,'723','123-7768');
+INSERT INTO CUSTOMER_2 VALUES(365,'Tirpin','Khaleed','G','723','123-9876');
+INSERT INTO CUSTOMER_2 VALUES(368,'Lewis','Marie','J','734','332-1789');
+INSERT INTO CUSTOMER_2 VALUES(369,'Dunne','Leona','K','713','894-1238');
 
 
 -- Union Query
-select last_name, first_name, active, email
+select cus_lname, cus_fname, cus_initial, cus_areacode, cus_phone
 from customer
 union
-select last_name, first_name, active, email from CUSTOMER_2;
+select cus_lname, cus_fname, cus_initial, cus_areacode, cus_phone from customer_2;
 
 -- Intersect Query (MYSQL DOES NOT SUPPORT)
 
-select customer_id from customer 
-where active='1' and 
-customer_id in (SELECT DISTINCT  customer_id from rental);
+select cus_code from customer 
+where cus_areacode='615' and 
+cus_code in (SELECT DISTINCT  cus_code from invoice);
 
 -- minus alternative
-select customer_id from customer 
-where active='1' and 
-customer_id not in (SELECT DISTINCT  customer_id from rental);
+select cus_code from customer 
+where cus_areacode='615' and 
+cus_code not in (SELECT DISTINCT  cus_code from invoice);
 
 -- create view
-create view pmt_stats as
-select rental_id, sum(amount) as totcost, max(amount) as MaxAmt,
-	MIN(amount) AS MinAmt, AVG(amount) AS AvgAmt
-    FROM payment
-    GROUP BY rental_id;
+create view prod_stats as
+select v_code, sum(P_QOH*p_price) as totcost, max(P_QOH) as Maxqty,
+	MIN(P_QOH) AS MINQTY, AVG(p_qoh) AS AVGQTY
+    FROM PRODUCT
+    GROUP BY V_CODE;
     
-select * from pmt_stats;
+select * from prod_stats;
 
 -- updatable views
 
 -- Triggers (Row level)
 
 
-CREATE TABLE staff_audit (
+CREATE TABLE employees_audit (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    staff_id INT NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
+    employeeNumber INT NOT NULL,
+    lastname VARCHAR(50) NOT NULL,
     changedat DATETIME DEFAULT NULL,
     action VARCHAR(50) DEFAULT NULL
 );
 
-CREATE TRIGGER before_staff_update 
-    BEFORE UPDATE ON staff
+CREATE TRIGGER before_employee_update 
+    BEFORE UPDATE ON emp
     FOR EACH ROW 
- INSERT INTO staff_audit
+ INSERT INTO employees_audit
  SET action = 'update',
-     staff_id = OLD.staff_id,
-     last_name = OLD.last_name,
+     employeeNumber = OLD.emp_num,
+     lastname = OLD.emp_lname,
      changedat = NOW();     
 
 show triggers;
-UPDATE staff
+UPDATE emp
 SET 
-    last_name = 'Phan'
+    emp_lname = 'Phan'
 WHERE
-    staff_id = 1;
-drop trigger before_staff_update;
+    emp_num = 100;
+drop trigger before_employee_update;
 -- Triggers (Stemployees_auditatement level)
 
 -- Stored Procedure
